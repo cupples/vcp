@@ -71,7 +71,7 @@ unit
 interface
 
 uses
-  Windows, unaTypes, unaUtils, unaClasses,
+  Windows, unaTypes, unaUtils, unaClasses,dialogs,
   Classes;
 
 
@@ -137,7 +137,7 @@ type
     //
     f_dumpOutput: wideString;
     f_dumpInput: wideString;
-    f_dumpOutputOK: bool;
+    //f_dumpOutputOK: bool;
     f_dumpInputOK: bool;
     //
     f_ipo: unsigned;
@@ -153,12 +153,12 @@ type
     //
     f_formatCRC: uint;
     //
-    f_consumers: unaObjectList;
-    f_providers: unaObjectList;
+//    f_consumers: unaObjectList;
+//    f_providers: unaObjectList;
     f_dataProxyThread: unaThread;
     //
-    procedure triggerDataAvailEvent(data: pointer; len: uint);
-    procedure triggerDataDSPEvent(data: pointer; len: uint);
+    //procedure triggerDataAvailEvent(data: pointer; len: uint);
+    //procedure triggerDataDSPEvent(data: pointer; len: uint);
     //
     function getActive(): boolean;
     procedure setActive(value: boolean);
@@ -200,6 +200,12 @@ type
     function getInBytes(index: int): int64;
     function getOutBytes(index: int): int64;
   protected
+    f_dumpOutputOK: bool;
+    f_consumers: unaObjectList;
+    f_providers: unaObjectList;
+
+    procedure triggerDataAvailEvent(data: pointer; len: uint);
+    procedure triggerDataDSPEvent(data: pointer; len: uint);
     {*
       Writes data into the pipe.
     }
@@ -1510,41 +1516,65 @@ end;
 function unavclInOutPipe.onNewData(data: pointer; len: uint; provider: pointer): bool;
 var
   i: int;
+  _data: Pointer;
+  _len_remaining: Cardinal;
+  _len: Cardinal;
+  mtu: integer;
 begin
   result := (nil <> data) and (0 < len);
   if (result) then begin
-    //
-    triggerDataDSPEvent(data, len);
-    //
-    if (lockNonEmptyList_r(f_consumers, true, 50 {$IFDEF DEBUG }, '.onNewData(len=' + int2str(len) + ')'{$ENDIF DEBUG })) then
-      try
-	i := 0;
-	while (i < f_consumers.count) do begin
-	  //
-	  with (unavclInOutPipe(f_consumers[i])) do begin
-	    //
-	    if (active) then
-	      write(data, len, unavclInOutPipe(provider));
-	  end;
-	  //
-	  inc(i);
-	end;
-      finally
-	unlockListRO(f_consumers);
-      end;
-    //
-    if (f_dumpOutputOK) then begin
+
+    // framesize setting hack.
+    mtu := 1200;
+    _data := data;
+    _len := mtu;
+    _len_remaining := len;
+
+    while _len_remaining > 0 do
+    begin
       //
-    {$IFDEF LOG_DUMP_TEXTHEADER }
-      writeToFile(dumpOutput, #13#10'--- New chunk added: ' + sysDate2str() + ' ' + sysTime2str() + ' ---'#13#10);
-    {$ENDIF LOG_DUMP_TEXTHEADER }
-      writeToFile(dumpOutput, data, len);
+      triggerDataDSPEvent(_data, _len);
+      //
+      if (lockNonEmptyList_r(f_consumers, true, 50 {$IFDEF DEBUG }, '.onNewData(len=' + int2str(_len) + ')'{$ENDIF DEBUG })) then
+        try
+	        i := 0;
+	         while (i < f_consumers.count) do begin
+	         //
+	          with (unavclInOutPipe(f_consumers[i])) do begin
+	            //
+	            if (active) then
+	              write(_data, _len, unavclInOutPipe(provider));
+	          end;
+	        //
+	        inc(i);
+	        end;
+        finally
+	        unlockListRO(f_consumers);
+        end;
+      //
+      if (f_dumpOutputOK) then begin
+        //
+      {$IFDEF LOG_DUMP_TEXTHEADER }
+        writeToFile(dumpOutput, #13#10'--- New chunk added: ' + sysDate2str() + ' ' + sysTime2str() + ' ---'#13#10);
+      {$ENDIF LOG_DUMP_TEXTHEADER }
+        writeToFile(dumpOutput, _data, _len);
+      end;
+      //
+      if (0 < _len) then
+        incInOutBytes(0, false, _len);
+      //
+      triggerDataAvailEvent(_data, _len);
+
+      // move the pointer location along the length before updating points.
+      _data := pointer(integer(_data) + _len);
+
+      // calc how much to write next time through.
+      _len_remaining := _len_remaining - _len;
+      if _len_remaining >= mtu then
+        _len := mtu
+      else
+        _len := _len_remaining;
     end;
-    //
-    if (0 < len) then
-      incInOutBytes(0, false, len);
-    //
-    triggerDataAvailEvent(data, len);
   end;
 end;
 
