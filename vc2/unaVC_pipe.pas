@@ -137,7 +137,7 @@ type
     //
     f_dumpOutput: wideString;
     f_dumpInput: wideString;
-    //f_dumpOutputOK: bool;
+    f_dumpOutputOK: bool;
     f_dumpInputOK: bool;
     //
     f_ipo: unsigned;
@@ -153,12 +153,12 @@ type
     //
     f_formatCRC: uint;
     //
-//    f_consumers: unaObjectList;
-//    f_providers: unaObjectList;
+    f_consumers: unaObjectList;
+    f_providers: unaObjectList;
     f_dataProxyThread: unaThread;
     //
-    //procedure triggerDataAvailEvent(data: pointer; len: uint);
-    //procedure triggerDataDSPEvent(data: pointer; len: uint);
+    procedure triggerDataAvailEvent(data: pointer; len: uint);
+    procedure triggerDataDSPEvent(data: pointer; len: uint);
     //
     function getActive(): boolean;
     procedure setActive(value: boolean);
@@ -200,12 +200,6 @@ type
     function getInBytes(index: int): int64;
     function getOutBytes(index: int): int64;
   protected
-    f_dumpOutputOK: bool;
-    f_consumers: unaObjectList;
-    f_providers: unaObjectList;
-
-    procedure triggerDataAvailEvent(data: pointer; len: uint);
-    procedure triggerDataDSPEvent(data: pointer; len: uint);
     {*
       Writes data into the pipe.
     }
