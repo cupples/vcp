@@ -1518,8 +1518,12 @@ begin
   result := (nil <> data) and (0 < len);
   if (result) then begin
 
-    // framesize setting hack.
-    mtu := 1200;
+    // framesize setting hack. THis needs to be exposed as a property
+    // This also needs to be buffered so all frames are the same size
+    // If not the buffering will be a PITA on things like mix engines
+    // down the road. All packets should be the same size and format.
+    mtu := 1176;
+    //mtu := len;
     _data := data;
     _len := mtu;
     _len_remaining := len;
