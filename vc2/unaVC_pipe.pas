@@ -1511,9 +1511,9 @@ function unavclInOutPipe.onNewData(data: pointer; len: uint; provider: pointer):
 var
   i: int;
   _data: Pointer;
-  _len_remaining: Cardinal;
-  _len: Cardinal;
-  mtu: integer;
+  _len_remaining: Integer;
+  _len: Integer;
+  mtu: Integer;
 begin
   result := (nil <> data) and (0 < len);
   if (result) then begin
